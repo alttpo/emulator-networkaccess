@@ -28,6 +28,12 @@ typedef struct
     int64_t(*function)(SOCKET, char**, int);
 } generic_emu_nwa_command_entry;
 
+typedef struct
+{
+    const char* string;
+    int64_t(*function)(SOCKET, char**, int);
+} custom_emu_nwa_command_entry;
+
 typedef struct generic_poll_server_memory_argument_struct
 {
     unsigned int offset;
@@ -71,7 +77,7 @@ typedef struct {
 
     generic_poll_server_client_state state;
 
-    emulator_network_access_command         current_command;
+    bool            command_accepts_binary_input;
 
     char                binary_header[5];
     unsigned char       binary_header_size;

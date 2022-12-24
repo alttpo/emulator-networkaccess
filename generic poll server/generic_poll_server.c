@@ -293,35 +293,42 @@ static void send_error(SOCKET fd, emulator_network_access_error_type type, const
 
 static int64_t execute_command(generic_poll_server_client* client, char *cmd_str, char **args, int args_count)
 {
-    emulator_network_access_command command;
-    bool    valid_command = false;
+    if (cmd_str[0] == 'b') {
+        client->command_accepts_binary_input = true;
+    }
+
     for (unsigned int i = 0; i < emulator_network_access_number_of_command; i++)
     {
         if (strcmp(cmd_str, emulator_network_access_command_strings[i].string) == 0)
         {
-            command = emulator_network_access_command_strings[i].command;
-            valid_command = true;
+            emulator_network_access_command command = emulator_network_access_command_strings[i].command;
+
+            for (unsigned int i = 0; i < generic_emu_mwa_map_size; i++)
+            {
+                if (generic_emu_mwa_map[i].command == command)
+                {
+                    return generic_emu_mwa_map[i].function(client->socket_fd, args, args_count);
+                }
+            }
+            return -1;
         }
     }
-    if (!valid_command)
+
+    for (unsigned int i = 0; i < custom_emu_nwa_map_size; i++)
     {
-        send_error(client->socket_fd, invalid_command, "Invalid command");
-        return 0;
-    }
-    client->current_command = command;
-    for (unsigned int i = 0; i < generic_emu_mwa_map_size; i++)
-    {
-        if ( generic_emu_mwa_map[i].command == command)
+        if (strcmp(cmd_str, custom_emu_nwa_map[i].string) == 0)
         {
-            return generic_emu_mwa_map[i].function(client->socket_fd, args, args_count);
+            return custom_emu_nwa_map[i].function(client->socket_fd, args, args_count);
         }
     }
-    return -1;
+
+    send_error(client->socket_fd, invalid_command, "Invalid command");
+    return 0;
 }
 
 static void process_binary_block(generic_poll_server_client* client)
 {
-    if (client->current_command == bCORE_WRITE)
+    if (client->command_accepts_binary_input)
     {
         generic_poll_server_write_function(client->socket_fd, client->binary_block, client->binary_block_size);
         free(client->binary_block);
